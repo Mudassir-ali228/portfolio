@@ -8,7 +8,7 @@ export const profile = {
   available: "Open to roles",
   email: "amudassir4321@gmail.com",
   phone: "+92 309 0477778",
-  linkedin: "https://linkedin.com/in/mudassir-ali",
+  linkedin: "https://www.linkedin.com/in/mudassir-ali228",
   github: "https://github.com/Mudassir-ali228",
   cv: "/Mudassir-Ali-CV.pdf",
   tagline:
@@ -700,7 +700,7 @@ export const contactGroups = [
   },
   {
     label: "Where the suits are",
-    links: [{ text: "LinkedIn", href: "https://linkedin.com/in/mudassir-ali" }],
+    links: [{ text: "LinkedIn", href: "https://www.linkedin.com/in/mudassir-ali228" }],
   },
   {
     label: "The formal version",
