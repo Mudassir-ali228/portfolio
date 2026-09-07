@@ -566,25 +566,26 @@ export const lab = [
   },
 ];
 
+// Reverse-chronological: Coshi ends Jul 2026, SourceLabs ended Sep 2025.
 export const experience = [
   {
-    role: "Web App Intern",
-    org: "SourceLabs",
-    place: "Lahore",
-    period: "6 weeks",
+    role: "Junior Developer",
+    org: "Coshi Infrastructure",
+    place: "Hong Kong · Remote",
+    period: "Mar 2026 – Jul 2026",
     bullets: [
-      "Built and shipped full-stack features across MongoDB, Express, React and Node.js under senior-engineer review.",
-      "Designed REST endpoints and component-based React interfaces with consistent client-side state management.",
+      "Delivered assigned modules across several web stacks, ramping quickly on unfamiliar codebases and conventions.",
+      "Worked asynchronously with a distributed team across time zones, keeping every module on schedule.",
     ],
   },
   {
     role: "Web App Intern",
-    org: "Coshi Infrastructure",
-    place: "Hong Kong · Remote",
-    period: "12 weeks",
+    org: "SourceLabs",
+    place: "Lahore",
+    period: "Jul 2025 – Sep 2025",
     bullets: [
-      "Delivered assigned modules across several web stacks, ramping quickly on unfamiliar codebases and conventions.",
-      "Worked asynchronously with a distributed team across time zones, keeping every module on schedule.",
+      "Built and shipped full-stack features across MongoDB, Express, React and Node.js under senior-engineer review.",
+      "Designed REST endpoints and component-based React interfaces with consistent client-side state management.",
     ],
   },
 ];
