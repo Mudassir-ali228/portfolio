@@ -1,68 +1,79 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { profile } from "@/lib/content";
+import { scrollToTarget } from "./motion/MotionProvider";
 
 const links = [
   { href: "/#work", label: "Work" },
-  { href: "/#profile", label: "Profile" },
-  { href: "/#experience", label: "Track record" },
-  { href: "/#capabilities", label: "Capabilities" },
+  { href: "/#about", label: "About" },
   { href: "/#contact", label: "Contact" },
 ];
 
+function toggleTheme() {
+  const root = document.documentElement;
+  const next = root.dataset.theme === "light" ? "dark" : "light";
+  root.dataset.theme = next;
+  try {
+    localStorage.setItem("theme", next);
+  } catch {
+    /* Private browsing: the choice just will not persist. */
+  }
+}
+
+/** Names the theme it switches to. Both labels are rendered and CSS shows
+ *  one, so the right word is there from the first paint. */
+function ThemeButton({ className = "", tabIndex }: { className?: string; tabIndex?: number }) {
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label="Switch colour theme"
+      tabIndex={tabIndex}
+      className={className}
+    >
+      <span className="when-dark">Light theme</span>
+      <span className="when-light">Dark theme</span>
+    </button>
+  );
+}
+
 export function Nav() {
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState<string | null>(null);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
   const headerRef = useRef<HTMLElement>(null);
-  const barRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
-  /* One passive scroll listener, coalesced into a rAF, writing a transform
-     and toggling one class. This was a framer-motion spring plus a second
-     listener; on a long page that work happens on every scroll frame. */
+  // Lifts onto a ground once the page moves; hides while reading down and
+  // comes back as soon as the reader scrolls up.
   useEffect(() => {
     let raf = 0;
-    let lifted = false;
-
+    let last = window.scrollY;
     const apply = () => {
       raf = 0;
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - window.innerHeight;
-      const progress = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
-      if (barRef.current) {
-        barRef.current.style.transform = `scaleX(${progress})`;
-      }
-      const nowLifted = window.scrollY > 24;
-      if (nowLifted !== lifted) {
-        lifted = nowLifted;
-        headerRef.current?.classList.toggle("is-lifted", nowLifted);
-      }
+      const y = window.scrollY;
+      const h = headerRef.current;
+      if (!h) return;
+      h.classList.toggle("is-lifted", y > 16);
+      if (y > 240 && y > last + 4) h.classList.add("is-hidden");
+      else if (y < last - 4 || y <= 240) h.classList.remove("is-hidden");
+      last = y;
     };
-
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(apply);
     };
-
     apply();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
     };
   }, []);
 
   useEffect(() => {
-    setTheme((document.documentElement.dataset.theme as "dark" | "light") ?? "dark");
-  }, []);
-
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
     if (!open) return;
+    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
@@ -73,155 +84,87 @@ export function Nav() {
     };
   }, [open]);
 
-  /* Light up whichever section is crossing the middle of the viewport. On a
-     case-study page none of these exist and the observer watches nothing. */
-  useEffect(() => {
-    const sections = links
-      .map((l) => document.querySelector<HTMLElement>(l.href.replace("/", "")))
-      .filter((el): el is HTMLElement => el !== null);
-    if (!sections.length) return;
+  /* On the home page, glide to the section instead of jumping. */
+  const go = (href: string) => (e: MouseEvent) => {
+    setOpen(false);
+    if (pathname !== "/") return;
+    e.preventDefault();
+    const hash = href.slice(1);
+    history.replaceState(null, "", hash);
+    scrollToTarget(hash);
+  };
 
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) setActive(`#${entry.target.id}`);
-        }
-      },
-      { rootMargin: "-45% 0px -50% 0px", threshold: 0 },
-    );
-    sections.forEach((s) => io.observe(s));
-    return () => io.disconnect();
-  }, []);
-
-  function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem("theme", next);
-    } catch {
-      /* private browsing — the choice just will not persist */
-    }
-    setTheme(next);
-  }
+  const item = "quiet-link block text-[0.875rem] leading-6";
 
   return (
     <>
-      <div
-        ref={barRef}
-        className="fixed inset-x-0 top-0 z-[60] h-px origin-left bg-brass"
-        style={{ transform: "scaleX(0)" }}
-        aria-hidden="true"
-      />
-
       <header ref={headerRef} className="site-nav fixed inset-x-0 top-0 z-50">
-        <nav className="shell flex h-16 items-center justify-between md:h-20">
+        <nav className="shell flex h-16 items-center justify-between" aria-label="Main">
           <Link
             href="/"
-            className="flex items-baseline gap-2.5"
-            aria-label={`${profile.name} — home`}
+            onClick={pathname === "/" ? (e) => (e.preventDefault(), scrollToTarget(0)) : undefined}
+            className="display text-[1.25rem] leading-none tracking-[-0.01em]"
           >
-            <span className="display text-lg leading-none">
-              {profile.first}
-              <span className="text-brass">.</span>
-            </span>
-            <span className="label hidden sm:block">{profile.role}</span>
+            {profile.name}
           </Link>
 
-          <div className="flex items-center gap-1 md:gap-2">
-            <ul className="mr-2 hidden items-center gap-1 lg:flex">
-              {links.map((l) => {
-                const isActive = active === l.href.replace("/", "");
-                return (
-                  <li key={l.href}>
-                    <Link
-                      href={l.href}
-                      aria-current={isActive ? "true" : undefined}
-                      className={`relative block px-3 py-2 font-mono text-[0.6875rem] uppercase tracking-[0.16em] transition-colors duration-300 hover:text-ink ${
-                        isActive ? "text-ink" : "text-muted"
-                      }`}
-                    >
-                      {l.label}
-                      <span
-                        className={`absolute inset-x-3 bottom-1 h-px origin-left bg-brass transition-transform duration-500 ease-[var(--ease-out-expo)] ${
-                          isActive ? "scale-x-100" : "scale-x-0"
-                        }`}
-                      />
-                    </Link>
-                  </li>
-                );
-              })}
+          <div className="hidden items-center gap-8 md:flex">
+            <ul className="flex items-center gap-8">
+              {links.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} onClick={go(l.href)} className={item}>
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <a href={profile.cv} target="_blank" rel="noopener noreferrer" className={item}>
+                  CV
+                </a>
+              </li>
             </ul>
-
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-              className="flex h-9 items-center gap-1.5 rounded-full border border-line px-3 font-mono text-[0.625rem] uppercase tracking-[0.14em] text-muted transition-colors duration-300 hover:border-brass hover:text-ink"
-            >
-              <span
-                className="inline-block h-1.5 w-1.5 rounded-full bg-brass"
-                aria-hidden="true"
-              />
-              {theme === "dark" ? "Dark" : "Light"}
-            </button>
-
-            <a
-              href={profile.cv}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="hidden h-9 items-center rounded-full border border-brass bg-brass px-4 font-mono text-[0.625rem] uppercase tracking-[0.14em] text-bg transition-opacity duration-300 hover:opacity-85 sm:flex"
-            >
-              CV
-            </a>
-
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              aria-label="Open menu"
-              aria-expanded={open}
-              className="flex h-9 w-9 items-center justify-center lg:hidden"
-            >
-              <span className="relative block h-3 w-5" aria-hidden="true">
-                <span className="absolute inset-x-0 top-0 h-px bg-ink" />
-                <span className="absolute inset-x-0 bottom-0 h-px bg-ink" />
-              </span>
-            </button>
+            <span className="h-4 w-px bg-line" aria-hidden="true" />
+            <ThemeButton className={item} />
           </div>
+
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            className="quiet-link text-[0.875rem] md:hidden"
+          >
+            Menu
+          </button>
         </nav>
       </header>
 
-      {/* Always in the DOM, hidden with `visibility` so its links leave the
-          tab order when closed. Cheaper than mounting and unmounting, and
-          the transition is the compositor's job rather than JavaScript's. */}
       <div
-        className={`mobile-menu fixed inset-0 z-[70] bg-bg lg:hidden ${
-          open ? "is-open" : ""
-        }`}
+        id="mobile-menu"
+        className={`mobile-menu fixed inset-0 z-[70] flex flex-col bg-bg md:hidden ${open ? "is-open" : ""}`}
+        aria-hidden={!open}
       >
-        <div className="shell flex h-16 items-center justify-between">
-          <span className="display text-lg">
-            {profile.first}
-            <span className="text-brass">.</span>
-          </span>
+        <div className="shell flex h-16 shrink-0 items-center justify-between">
+          <span className="display text-[1.25rem] leading-none">{profile.name}</span>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            aria-label="Close menu"
             tabIndex={open ? 0 : -1}
-            className="font-mono text-[0.6875rem] uppercase tracking-[0.16em] text-muted"
+            className="quiet-link text-[0.875rem]"
           >
             Close
           </button>
         </div>
 
-        <ul className="shell mt-6 flex flex-col">
-          {links.map((l) => (
-            <li key={l.href}>
+        <ul className="shell mt-8 flex flex-col border-t border-line">
+          {links.map((l, i) => (
+            <li key={l.href} className="overflow-hidden border-b border-line">
               <Link
                 href={l.href}
-                onClick={() => setOpen(false)}
+                onClick={go(l.href)}
                 tabIndex={open ? 0 : -1}
-                className="display block border-b border-line py-[min(4vh,1.4rem)] text-[clamp(2rem,9vw,3rem)]"
+                className="menu-rise display block py-5 text-[2.5rem]"
+                style={{ "--i": i } as CSSProperties}
               >
                 {l.label}
               </Link>
@@ -229,23 +172,20 @@ export function Nav() {
           ))}
         </ul>
 
-        <div className="shell mt-8 flex flex-wrap gap-3">
+        <div className="shell mt-8 flex flex-wrap gap-x-7 gap-y-3 text-[0.9375rem]">
           <a
             href={profile.cv}
             target="_blank"
-            rel="noreferrer noopener"
+            rel="noopener noreferrer"
             tabIndex={open ? 0 : -1}
-            className="inline-flex h-11 items-center rounded-full border border-brass bg-brass px-6 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-bg"
+            className="text-link"
           >
-            Open CV
+            CV
           </a>
-          <a
-            href={`mailto:${profile.email}`}
-            tabIndex={open ? 0 : -1}
-            className="inline-flex h-11 items-center rounded-full border border-line px-6 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-muted"
-          >
+          <a href={`mailto:${profile.email}`} tabIndex={open ? 0 : -1} className="text-link">
             Email
           </a>
+          <ThemeButton className="text-link" tabIndex={open ? 0 : -1} />
         </div>
       </div>
     </>

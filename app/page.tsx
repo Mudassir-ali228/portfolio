@@ -1,22 +1,23 @@
-import { Nav } from "@/components/Nav";
-import { Masthead } from "@/components/Masthead";
+import type { Metadata } from "next";
+import { Hero } from "@/components/Hero";
 import { WorkIndex } from "@/components/WorkIndex";
-import { Profile } from "@/components/Profile";
-import { Ledger } from "@/components/Ledger";
-import { Capabilities } from "@/components/Capabilities";
+import { Figures } from "@/components/art/Figures";
+import { About } from "@/components/About";
 import { Contact } from "@/components/Contact";
 import { Footer } from "@/components/Footer";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default function Home() {
   return (
     <>
-      <Nav />
-      <main id="main" className="relative z-10">
-        <Masthead />
+      <main id="main">
+        <Hero />
         <WorkIndex />
-        <Profile />
-        <Ledger />
-        <Capabilities />
+        <Figures />
+        <About />
         <Contact />
       </main>
       <Footer />

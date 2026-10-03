@@ -2,112 +2,128 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { gsap } from "gsap";
 import { projects, type Project } from "@/lib/content";
-import { GrowRule, Reveal } from "./Reveal";
+import { Split } from "./motion/Split";
+import { Scribble } from "./art/Scribble";
+
+const bySlug = (slug: string) => projects.find((p) => p.slug === slug) ?? projects[0];
 
 /**
- * A gallery index rather than a list of cards. Everything is on one screen and
- * the row you point at drives the plate beside it — the spotlight comes from
- * dimming the other rows, not from decorating the active one, which is what
- * keeps a list of ten from reading as noise.
- *
- * Below `lg` the plate is dropped and the dimming with it: there is no hover
- * on a touch screen, so every row carries its own summary at full contrast.
+ * On large pointer screens the row under the cursor drives the plate on the
+ * left: the new project wipes up over the last one. Below `lg` there is no
+ * plate, so each row carries its own summary.
  */
 export function WorkIndex() {
-  const [activeSlug, setActiveSlug] = useState(projects[0].slug);
-  const active = projects.find((p) => p.slug === activeSlug) ?? projects[0];
+  const [active, setActive] = useState(projects[0].slug);
+  const [under, setUnder] = useState<string | null>(null);
+  const project = bySlug(active);
+
+  const show = (slug: string) => {
+    if (slug === active) return;
+    setUnder(active);
+    setActive(slug);
+  };
 
   return (
-    <section id="work" className="shell scroll-mt-20 py-14 sm:py-16 lg:py-24">
-      <Reveal>
-        <div className="flex items-baseline justify-between gap-6">
-          <span className="label">01 — Selected work</span>
-          <span className="label tabular-nums">
-            <span className="text-brass">{active.index}</span>
-            <span className="mx-1 text-line">/</span>
-            {String(projects.length).padStart(2, "0")}
-          </span>
+    <section id="work" className="shell scroll-mt-16 pb-24 md:pb-36">
+      <div className="relative pt-10 md:pt-14">
+        <span data-a="rule" className="absolute inset-x-0 top-0 h-px bg-line" />
+        <div className="flex items-end justify-between gap-6">
+          <h2
+            aria-label="Selected work"
+            data-a="chars"
+            className="display text-[clamp(3rem,8.5vw,7rem)] leading-[0.9]"
+          >
+            <Split text="Selected" />{" "}
+            <em className="relative italic">
+              <Split text="work" />
+              <Scribble
+                kind="swash"
+                seed={5}
+                className="-left-[3%] top-[88%] h-[0.28em] w-[106%]"
+                start="top 82%"
+                end="top 52%"
+              />
+            </em>
+          </h2>
+          <p className="label shrink-0 pb-2" data-a="fade" data-d="0.4">
+            {projects.length} projects
+          </p>
         </div>
-      </Reveal>
-      <GrowRule className="mt-3.5" />
+      </div>
 
-      <div className="mt-8 grid gap-10 lg:mt-12 lg:grid-cols-12 lg:gap-14">
-        {/* ------------------------------------------------- the plate */}
+      <div className="mt-12 grid gap-10 lg:mt-20 lg:grid-cols-12 lg:gap-14">
         <div className="hidden lg:col-span-6 lg:block">
-          <div className="sticky top-28">
-            <div className="flex items-baseline gap-4">
-              <span
-                key={`n-${active.slug}`}
-                className="panel-fade display text-[clamp(2.5rem,4vw,3.5rem)] leading-none text-line"
-              >
-                {active.index}
-              </span>
-              <span
-                key={`k-${active.slug}`}
-                className="panel-fade font-mono text-[0.625rem] uppercase tracking-[0.18em] text-faint"
-              >
-                {active.kind}
-              </span>
-            </div>
-
-            <div className="mt-4">
-              <Plate project={active} />
-            </div>
-
-            <dl
-              key={`m-${active.slug}`}
-              className="panel-fade mt-6 border-t border-line"
+          <div className="sticky top-24">
+            <div
+              className="relative aspect-[16/9] overflow-hidden border border-line bg-surface"
+              data-a="clip"
+              data-noscale=""
             >
-              <Row k="Type" v={active.context} />
-              <Row k="Year" v={active.period} />
-              <Row k="Stack" v={active.stack.join(" · ")} />
-            </dl>
-
-            <p
-              key={`b-${active.slug}`}
-              className="panel-fade mt-5 max-w-lg text-[0.9375rem] leading-relaxed text-muted"
-            >
-              {active.blurb}
-            </p>
-
-            {active.note && (
-              <p
-                key={`no-${active.slug}`}
-                className="panel-fade mt-3 max-w-lg border-l border-brass/40 pl-3.5 text-[0.8125rem] italic leading-relaxed text-faint"
-              >
-                {active.note}
-              </p>
-            )}
-
-            <p className="mt-6 font-mono text-[0.625rem] uppercase tracking-[0.14em] text-muted">
-              {active.study
-                ? "Open the case study →"
-                : active.href
-                  ? "Visit the site ↗"
-                  : "No write-up — ask me about it"}
-            </p>
+              {under && <Layer key={`u-${under}`} project={bySlug(under)} />}
+              <Layer key={active} project={project} enter={under !== null} />
+            </div>
+            <div key={project.slug} className="fade-swap">
+              <p className="body-copy mt-6 max-w-lg text-[0.9375rem]">{project.blurb}</p>
+              <dl className="mt-6 border-t border-line">
+                <Row k="Type" v={project.context} />
+                <Row k="Year" v={project.year} />
+                <Row k="Stack" v={project.stack.join(", ")} />
+              </dl>
+            </div>
           </div>
         </div>
 
-        {/* ------------------------------------------------- the index */}
-        {/* The padding is load-bearing: the sticky plate unsticks when its grid
-            column ends, so without room below the last row the plate slides
-            out of view exactly when you reach the bottom of the list. */}
-        <ol
-          className="work-list lg:col-span-6 lg:pb-72"
-          onMouseLeave={() => setActiveSlug(projects[0].slug)}
-        >
-          {projects.map((p) => (
-            <IndexRow
-              key={p.slug}
-              project={p}
-              isActive={p.slug === active.slug}
-              onFocus={() => setActiveSlug(p.slug)}
-            />
-          ))}
-        </ol>
+        <div className="lg:col-span-6">
+          <ol className="work-list">
+            {projects.map((p) => (
+              <li key={p.slug} className="relative">
+                <span data-a="rule" className="absolute inset-x-0 top-0 h-px bg-line" />
+                <Link
+                  href={`/work/${p.slug}`}
+                  data-title={p.title}
+                  className="index-row flex w-full items-baseline gap-x-4 py-6 sm:gap-x-6"
+                  onMouseEnter={() => show(p.slug)}
+                  onFocus={() => show(p.slug)}
+                >
+                  <span className="label w-6 shrink-0 tabular-nums" data-a="fade" data-d="0.15">
+                    {p.index}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="row-title block">
+                      <span
+                        className="display block text-[clamp(1.6rem,4.2vw,2.25rem)] leading-tight"
+                        data-a="words"
+                        data-d="0.05"
+                      >
+                        <Split text={p.title} by="words" />
+                      </span>
+                    </span>
+                    <span className="mt-1.5 block text-[0.8125rem] text-faint" data-a="fade" data-d="0.2">
+                      {p.kind}
+                    </span>
+                    <span
+                      className="mt-2.5 block max-w-md text-[0.875rem] leading-relaxed text-muted lg:hidden"
+                      data-a="fade"
+                      data-d="0.25"
+                    >
+                      {p.blurb}
+                    </span>
+                  </span>
+                  <span className="label hidden shrink-0 tabular-nums sm:block" data-a="fade" data-d="0.2">
+                    {p.year}
+                  </span>
+                  <span className="row-arrow shrink-0 text-brass" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+          <span data-a="rule" className="block h-px bg-line" />
+        </div>
       </div>
     </section>
   );
@@ -115,158 +131,66 @@ export function WorkIndex() {
 
 function Row({ k, v }: { k: string; v: string }) {
   return (
-    <div className="flex gap-6 border-b border-line py-2">
-      <dt className="label w-20 shrink-0">{k}</dt>
-      <dd className="text-[0.8125rem] leading-relaxed text-ink">{v}</dd>
+    <div className="flex gap-6 border-b border-line py-2.5">
+      <dt className="label w-16 shrink-0 pt-0.5">{k}</dt>
+      <dd className="text-[0.875rem] leading-relaxed text-ink">{v}</dd>
     </div>
   );
 }
 
-function Plate({ project }: { project: Project }) {
+/** One project's plate. `enter` wipes it up over whatever is beneath. */
+function Layer({ project, enter = false }: { project: Project; enter?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!enter || !el || !document.documentElement.classList.contains("motion")) return;
+    const img = el.querySelectorAll("img");
+    const tl = gsap.timeline();
+    tl.fromTo(
+      el,
+      { clipPath: "inset(100% 0% 0% 0%)" },
+      { clipPath: "inset(0% 0% 0% 0%)", duration: 0.9, ease: "expo.out" },
+    );
+    if (img.length) tl.fromTo(img, { scale: 1.12 }, { scale: 1, duration: 1.3, ease: "expo.out" }, 0);
+    return () => {
+      tl.kill();
+    };
+  }, [enter]);
+
   const plate = project.plate;
 
-  if (plate?.shape === "wide") {
-    const img = plate.images[0];
-    return (
-      <div className="overflow-hidden rounded-sm border border-line bg-surface">
+  return (
+    <div ref={ref} className="absolute inset-0 bg-surface">
+      {plate?.shape === "wide" ? (
         <Image
-          key={img.src}
-          src={img.src}
-          alt={img.alt}
-          width={1600}
-          height={900}
-          className="plate-fade h-auto w-full"
-          sizes="(max-width: 1024px) 100vw, 40rem"
-          priority
+          src={plate.images[0].src}
+          alt={plate.images[0].alt}
+          fill
+          sizes="(min-width: 1024px) 36rem, 100vw"
+          className="object-cover object-top"
         />
-      </div>
-    );
-  }
-
-  /* Phone screenshots are roughly 1:2.2. Cropping one into a 16:9 box throws
-     away the screen; letterboxing one wastes two thirds of the plate. Three
-     of them stood side by side fill it and show three times as much app. */
-  if (plate?.shape === "tall") {
-    return (
-      <div
-        key={project.slug}
-        className="plate-fade flex aspect-[16/9] items-center justify-center gap-3 overflow-hidden rounded-sm border border-line bg-surface px-5 py-4"
-      >
-        {plate.images.slice(0, 3).map((img) => (
-          <div
-            key={img.src}
-            className="h-full overflow-hidden rounded-[3px] border border-line"
-          >
+      ) : plate?.shape === "tall" ? (
+        <div className="flex h-full items-center justify-center gap-3 px-6 py-5">
+          {plate.images.slice(0, 3).map((img) => (
             <Image
+              key={img.src}
               src={img.src}
               alt={img.alt}
-              width={650}
-              height={1400}
-              className="h-full w-auto object-contain"
-              sizes="180px"
-              priority
+              width={img.w}
+              height={img.h}
+              sizes="10rem"
+              className="h-full w-auto border border-line object-contain"
             />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (project.diagram) {
-    return (
-      <div className="flex aspect-[16/9] items-center rounded-sm border border-line bg-surface p-7">
-        <pre
-          key={project.slug}
-          className="plate-fade w-full overflow-x-auto font-mono text-[0.6875rem] leading-loose text-muted"
-        >
-          {project.diagram.join("\n")}
-        </pre>
-      </div>
-    );
-  }
-
-  // Nothing to show but the fact of it — so show that, quietly.
-  return (
-    <div
-      key={project.slug}
-      className="plate-fade flex aspect-[16/9] items-end rounded-sm border border-line bg-surface p-7"
-    >
-      <span className="display text-[clamp(1.6rem,3vw,2.4rem)] leading-tight text-line">
-        {project.title}
-      </span>
-    </div>
-  );
-}
-
-function IndexRow({
-  project,
-  isActive,
-  onFocus,
-}: {
-  project: Project;
-  isActive: boolean;
-  onFocus: () => void;
-}) {
-  // The write-up wins when a project has both: it says more, and it carries
-  // the link out to the live site anyway.
-  const href = project.study ? `/work/${project.slug}` : project.href;
-  const external = !project.study && Boolean(project.href);
-
-  const inner = (
-    <>
-      <span className="label shrink-0 pt-[0.42rem] tabular-nums">{project.index}</span>
-
-      <span className="min-w-0 flex-1">
-        <span className="display block text-[clamp(1.4rem,4.4vw,2.05rem)] leading-tight">
-          {project.title}
-        </span>
-        <span className="mt-1 block font-mono text-[0.5625rem] uppercase tracking-[0.16em] text-faint sm:text-[0.625rem]">
-          {project.kind}
-        </span>
-        {/* No plate on touch, so the row has to carry the summary itself. */}
-        <span className="mt-2 block max-w-md text-[0.8125rem] leading-relaxed text-muted lg:hidden">
-          {project.blurb}
-        </span>
-      </span>
-
-      <span className="label shrink-0 pt-[0.42rem] tabular-nums">{project.period}</span>
-
-      <span
-        className="row-arrow shrink-0 pt-[0.3rem] font-mono text-xs text-brass"
-        aria-hidden="true"
-      >
-        {external ? "↗" : "→"}
-      </span>
-    </>
-  );
-
-  const shared =
-    "index-row group flex w-full items-start gap-x-4 py-4 text-left sm:gap-x-6 sm:py-5";
-
-  return (
-    <li className="border-b border-line first:border-t" data-reveal="">
-      {href ? (
-        external ? (
-          <a
-            href={href}
-            target="_blank"
-            rel="noreferrer noopener"
-            className={shared}
-            onMouseEnter={onFocus}
-            onFocus={onFocus}
-          >
-            {inner}
-          </a>
-        ) : (
-          <Link href={href} className={shared} onMouseEnter={onFocus} onFocus={onFocus}>
-            {inner}
-          </Link>
-        )
-      ) : (
-        <div className={shared} onMouseEnter={onFocus}>
-          {inner}
+          ))}
         </div>
-      )}
-    </li>
+      ) : project.diagram ? (
+        <div className="flex h-full items-center overflow-x-auto p-7">
+          <pre className="font-mono text-[0.6875rem] leading-loose text-muted">
+            {project.diagram.join("\n")}
+          </pre>
+        </div>
+      ) : null}
+    </div>
   );
 }

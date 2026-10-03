@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { Reveal, Stagger, StaggerItem, GrowRule } from "@/components/Reveal";
-import { caseStudies, projects } from "@/lib/content";
+import type { CSSProperties } from "react";
+import { projects, type Project, type Shot } from "@/lib/content";
+import { ScrubText, Split } from "@/components/motion/Split";
+import { Figure } from "@/components/art/Figure";
+
+const d = (s: number) => ({ "--d": `${s}s` }) as CSSProperties;
+
+export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return caseStudies.map((p) => ({ slug: p.slug }));
+  return projects.map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({
@@ -19,251 +24,297 @@ export async function generateMetadata({
   const { slug } = await params;
   const project = projects.find((p) => p.slug === slug);
   if (!project) return {};
-  return { title: project.title, description: project.blurb };
+  return {
+    title: project.title,
+    description: project.blurb,
+    alternates: { canonical: `/work/${project.slug}` },
+    openGraph: { title: project.title, description: project.blurb },
+  };
 }
 
-export default async function CaseStudy({
+export default async function ProjectPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const project = projects.find((p) => p.slug === slug);
-  if (!project?.study) notFound();
+  const i = projects.findIndex((p) => p.slug === slug);
+  if (i === -1) notFound();
 
-  const { study } = project;
-  const order = caseStudies.findIndex((p) => p.slug === slug);
-  const next = caseStudies[(order + 1) % caseStudies.length];
+  const project = projects[i];
+  const next = projects[(i + 1) % projects.length];
+  const { lead, rest } = splitImages(project);
 
   return (
     <>
-      <Nav />
-      <main id="main" className="relative z-10">
-        {/* ------------------------------------------------ masthead */}
-        <header className="shell pt-32 md:pt-44">
-          <Link
-            href="/#work"
-            className="label transition-colors duration-300 hover:text-brass"
-          >
-            ← All work
-          </Link>
+      <main id="main">
+        <header className="shell pt-32 md:pt-40">
+          <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
+            <div className="lg:col-span-8">
+              <p className="load-fade" style={d(0)}>
+                <Link href="/#work" data-title="Selected work" className="label quiet-link">
+                  ← All work
+                </Link>
+              </p>
+              <p className="label load-fade mt-12 flex flex-wrap gap-x-3" style={d(0.1)}>
+                <span>{project.index}</span>
+                <span aria-hidden="true">/</span>
+                <span>{project.kind}</span>
+              </p>
+              <h1
+                aria-label={project.title}
+                className="display load-chars mt-5 text-[clamp(2.75rem,8vw,6.75rem)] leading-[0.92]"
+                style={d(0.15)}
+              >
+                <Split text={project.title} />
+              </h1>
+              <p className="lede load-words mt-8 max-w-2xl" style={d(0.55)}>
+                <Split text={project.blurb} by="words" />
+              </p>
+            </div>
 
-          <div className="mt-8 flex items-baseline gap-5">
-            <span className="label">{project.index}</span>
-            <GrowRule className="flex-1" />
-            <span className="label">{project.context}</span>
+            {/* Each project keeps the same figure on every visit. */}
+            <div className="hidden lg:col-span-3 lg:col-start-10 lg:block">
+              <Figure
+                label={`Fig. ${project.index}`}
+                kind={project.figure.kind}
+                seed={project.figure.seed}
+                depth={project.figure.depth}
+                order={project.figure.order}
+                count={project.figure.count}
+                note={project.figure.note}
+                when="load"
+                delay={0.4}
+                captionClassName="load-fade"
+              />
+            </div>
           </div>
 
-          {/* CSS, not framer-motion: this is the LCP element and a JS
-              animation would not start until hydration. */}
-          <h1 className="display mt-6 text-[clamp(2.8rem,9vw,7rem)]">
-            <span className="line-mask">
-              <span className="line-rise">{project.title}</span>
-            </span>
-          </h1>
-
-          <p
-            className="prose-lede fade-up mt-6 max-w-2xl text-balance"
-            style={{ animationDelay: "0.18s" }}
-          >
-            {project.blurb}
-          </p>
-
-          {project.href && (
-            <a
-              href={project.href}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="btn-ghost fade-up mt-6"
-              style={{ animationDelay: "0.22s" }}
-            >
-              Visit the live site
-              <span className="btn-arrow">↗</span>
-            </a>
-          )}
-
-          <dl
-            className="fade-up mt-12 grid gap-x-8 gap-y-7 border-t border-line pt-7 sm:grid-cols-2 lg:grid-cols-4"
-            style={{ animationDelay: "0.26s" }}
-          >
-              <div>
-                <dt className="label">Type</dt>
-                <dd className="mt-2 text-sm">{project.kind}</dd>
-              </div>
-              <div>
-                <dt className="label">Period</dt>
-                <dd className="mt-2 text-sm">{project.period}</dd>
-              </div>
-              <div className="sm:col-span-2">
+          <div className="relative mt-14 pt-6">
+            <span className="load-rule absolute inset-x-0 top-0 h-px bg-line" style={d(0.7)} />
+            <dl className="grid gap-x-10 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+              <Meta k="Type" v={project.context} delay={0.85} />
+              <Meta k="Year" v={project.year} delay={0.9} />
+              <div className="load-fade sm:col-span-2" style={d(0.95)}>
                 <dt className="label">Stack</dt>
-                <dd className="mt-2 flex flex-wrap gap-x-2.5 gap-y-1.5 text-sm">
-                  {project.stack.map((s, i) => (
-                    <span key={s} className="flex items-baseline gap-2.5">
-                      {s}
-                      {i < project.stack.length - 1 && (
-                        <span className="text-[0.5rem] text-line">◆</span>
-                      )}
-                    </span>
-                  ))}
-                </dd>
+                <dd className="mt-2 text-[0.9375rem]">{project.stack.join(", ")}</dd>
               </div>
             </dl>
+          </div>
+
+          {project.href && (
+            <p className="load-fade mt-8 text-[0.9375rem]" style={d(1)}>
+              <a href={project.href} target="_blank" rel="noopener noreferrer" className="text-link">
+                Visit the live site ↗
+              </a>
+            </p>
+          )}
         </header>
 
-        {/* ------------------------------------------------- metrics */}
-        {/* Also CSS: on a short masthead these tiles sit at the fold, and a
-            JS reveal made one of the captions the LCP element at ~1.1s. */}
-        <section className="shell mt-20 md:mt-28">
-          <div className="grid gap-px border border-line bg-line sm:grid-cols-3">
-            {study.metrics.map((m, i) => (
-              <div
-                key={m.label}
-                className="fade-up bg-bg p-7 md:p-9"
-                style={{ animationDelay: `${0.06 + i * 0.07}s` }}
-              >
-                <p className="display text-[clamp(2.2rem,5vw,3.4rem)] text-brass">
-                  {m.value}
+        <figure className="shell mt-16 md:mt-24">
+          <Lead project={project} images={lead} />
+        </figure>
+
+        <section className="shell mt-20 grid gap-6 md:mt-32 lg:grid-cols-12 lg:gap-12">
+          <h2 className="label lg:col-span-3" data-a="fade">
+            Overview
+          </h2>
+          <p
+            className="display text-[clamp(1.5rem,2.6vw,2.25rem)] leading-[1.25] tracking-[-0.01em] lg:col-span-9"
+            data-a="scrub"
+          >
+            <ScrubText text={project.overview} />
+          </p>
+        </section>
+
+        <section className="shell mt-20 grid gap-6 md:mt-28 lg:grid-cols-12 lg:gap-12">
+          <h2 className="label lg:col-span-3" data-a="fade">
+            Details
+          </h2>
+          <ol className="lg:col-span-9">
+            {project.details.map((text, n) => (
+              <li key={text} className="relative flex gap-5 py-6 sm:gap-8">
+                <span data-a="rule" className="absolute inset-x-0 top-0 h-px bg-line" />
+                <span className="label shrink-0 pt-1 tabular-nums" data-a="fade" data-d="0.1">
+                  {String(n + 1).padStart(2, "0")}
+                </span>
+                <p className="body-copy max-w-2xl" data-a="lines" data-d="0.12">
+                  {text}
                 </p>
-                <p className="mt-3 text-sm leading-relaxed text-muted">
-                  {m.label}
-                </p>
-              </div>
+              </li>
             ))}
-          </div>
+            <li aria-hidden="true" className="list-none">
+              <span data-a="rule" className="block h-px bg-line" />
+            </li>
+          </ol>
         </section>
 
-        {/* ------------------------------------------------- diagram */}
-        {project.diagram && (
+        {rest.length > 0 && (
           <section className="shell mt-20 md:mt-28">
-            <Reveal>
-              <p className="label mb-4">The shape of it</p>
-              <div className="overflow-x-auto rounded-sm border border-line bg-surface p-7 md:p-10">
-                <pre className="font-mono text-[0.75rem] leading-loose text-muted md:text-[0.8125rem]">
-                  {project.diagram.join("\n")}
-                </pre>
-              </div>
-            </Reveal>
+            <h2 className="label mb-6" data-a="fade">
+              Screens
+            </h2>
+            <Gallery project={project} images={rest} />
           </section>
         )}
 
-        {/* -------------------------------------------------- prose */}
-        <section className="shell mt-24 md:mt-32">
-          <div className="grid gap-12 lg:grid-cols-12 md:gap-10">
-            <div className="lg:col-span-3">
-              <Reveal>
-                <h2 className="label sticky top-28">The problem</h2>
-              </Reveal>
-            </div>
-            <div className="lg:col-span-8 lg:col-start-5">
-              <Reveal>
-                <p className="text-[1.0625rem] leading-[1.8] text-ink md:text-[1.125rem]">
-                  {study.problem}
-                </p>
-              </Reveal>
-            </div>
-          </div>
-
-          <div className="mt-20 grid gap-12 md:mt-28 lg:grid-cols-12 md:gap-10">
-            <div className="lg:col-span-3">
-              <Reveal>
-                <h2 className="label sticky top-28">The approach</h2>
-              </Reveal>
-            </div>
-            <Stagger className="flex flex-col lg:col-span-8 lg:col-start-5">
-              {study.approach.map((step, i) => (
-                <StaggerItem
-                  key={i}
-                  className="flex gap-6 border-b border-line py-7 first:border-t"
-                >
-                  <span className="label pt-1.5">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <p className="text-[0.9375rem] leading-[1.8] text-muted">
-                    {step}
-                  </p>
-                </StaggerItem>
-              ))}
-            </Stagger>
-          </div>
-
-          <div className="mt-20 grid gap-12 md:mt-28 lg:grid-cols-12 md:gap-10">
-            <div className="lg:col-span-3">
-              <Reveal>
-                <h2 className="label sticky top-28">Decisions</h2>
-              </Reveal>
-            </div>
-            <Stagger className="flex flex-col gap-10 lg:col-span-8 lg:col-start-5">
-              {study.decisions.map((d) => (
-                <StaggerItem key={d.title}>
-                  <h3 className="display text-[1.35rem] leading-snug md:text-[1.6rem]">
-                    {d.title}
-                  </h3>
-                  <p className="mt-3 text-[0.9375rem] leading-[1.8] text-muted">
-                    {d.body}
-                  </p>
-                </StaggerItem>
-              ))}
-            </Stagger>
-          </div>
-        </section>
-
-        {/* ------------------------------------------------- gallery */}
-        {project.accentImages && (
-          <section className="shell mt-24 md:mt-32">
-            <Reveal>
-              <p className="label mb-5">Stills</p>
-            </Reveal>
-            <Stagger
-              className={
-                project.plate?.shape === "tall"
-                  ? "grid grid-cols-2 gap-4 sm:grid-cols-3"
-                  : "grid gap-4 sm:grid-cols-2"
-              }
-            >
-              {project.accentImages.map((img, i) => (
-                <StaggerItem
-                  key={img.src}
-                  className={
-                    i === 0 && project.plate?.shape !== "tall"
-                      ? "overflow-hidden rounded-sm border border-line sm:col-span-2"
-                      : "overflow-hidden rounded-sm border border-line"
-                  }
-                >
-                  <Image
-                    src={img.src}
-                    alt={img.alt}
-                    width={project.plate?.shape === "tall" ? 650 : 1600}
-                    height={project.plate?.shape === "tall" ? 1400 : 900}
-                    className="h-auto w-full"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 22rem"
-                  />
-                </StaggerItem>
-              ))}
-            </Stagger>
-          </section>
-        )}
-
-        {/* ---------------------------------------------------- next */}
-        <section className="mt-28 border-t border-line md:mt-40">
-          <Link href={`/work/${next.slug}`} className="group block">
-            <div className="shell flex flex-col gap-4 py-16 md:flex-row md:items-end md:justify-between md:py-24">
+        <nav className="shell mt-28 md:mt-40" aria-label="Next project">
+          <Link href={`/work/${next.slug}`} data-title={next.title} className="group relative block">
+            <span data-a="rule" className="absolute inset-x-0 top-0 h-px bg-line" />
+            <div className="flex flex-col gap-4 py-16 md:flex-row md:items-end md:justify-between md:py-24">
               <div>
-                <p className="label mb-4">Next case study</p>
-                <h2 className="display text-[clamp(2.2rem,6vw,4.5rem)] transition-transform duration-700 ease-[var(--ease-out-expo)] md:group-hover:translate-x-3">
-                  {next.title}
-                </h2>
+                <p className="label" data-a="fade">
+                  Next project
+                </p>
+                <p
+                  aria-label={next.title}
+                  className="display mt-5 text-[clamp(2.5rem,7vw,5.5rem)] leading-[0.95] transition-colors duration-300 group-hover:text-brass"
+                  data-a="chars"
+                  data-d="0.1"
+                >
+                  <Split text={next.title} />
+                </p>
               </div>
-              <span className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-muted transition-colors duration-500 group-hover:text-brass">
-                {next.kind}
-                <span className="ml-3 inline-block transition-transform duration-500 group-hover:translate-x-1">
+              <p className="text-[0.875rem] text-faint" data-a="fade" data-d="0.3">
+                {next.kind}{" "}
+                <span className="inline-block transition-transform duration-500 group-hover:translate-x-1.5">
                   →
                 </span>
-              </span>
+              </p>
             </div>
           </Link>
-        </section>
+        </nav>
       </main>
       <Footer />
     </>
+  );
+}
+
+function Meta({ k, v, delay }: { k: string; v: string; delay: number }) {
+  return (
+    <div className="load-fade" style={d(delay)}>
+      <dt className="label">{k}</dt>
+      <dd className="mt-2 text-[0.9375rem]">{v}</dd>
+    </div>
+  );
+}
+
+/** Wide projects lead with one screenshot; phone projects with three. */
+function splitImages(project: Project) {
+  const all = project.images ?? [];
+  const n = project.plate?.shape === "tall" ? 3 : 1;
+  return { lead: all.slice(0, n), rest: all.slice(n) };
+}
+
+function Lead({ project, images }: { project: Project; images: Project["images"] & {} }) {
+  if (images.length === 0 && project.diagram) {
+    return (
+      <div className="load-clip overflow-x-auto border border-line bg-surface p-7 md:p-14" style={d(0.9)}>
+        <pre className="font-mono text-[0.75rem] leading-loose text-muted md:text-[0.8125rem]">
+          {project.diagram.join("\n")}
+        </pre>
+      </div>
+    );
+  }
+
+  if (project.plate?.shape === "tall") {
+    return (
+      <div className="load-fade grid grid-cols-3 gap-3 border border-line bg-surface p-3 sm:gap-6 sm:p-8 md:p-12" style={d(0.8)}>
+        {images.map((img, n) => (
+          <Phone
+            key={img.src}
+            img={img}
+            priority
+            sizes="(min-width: 1216px) 22rem, 30vw"
+            className="load-clip"
+            style={d(0.95 + n * 0.12)}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  const img = images[0];
+  if (!img) return null;
+  // The picture is 12% taller than its frame and drifts inside it on scroll.
+  return (
+    <div
+      className="load-clip relative overflow-hidden border border-line bg-surface"
+      style={{ ...d(0.9), aspectRatio: `${img.w} / ${img.h}` }}
+    >
+      <div className="absolute inset-x-0 -top-[6%] -bottom-[6%]" data-a="parallax" data-speed="9">
+        <Image
+          src={img.src}
+          alt={img.alt}
+          fill
+          priority
+          sizes="(min-width: 1216px) 70rem, 100vw"
+          className="object-cover"
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Phone screenshots differ slightly in aspect. A shared frame keeps a row of
+ *  them level; the odd one out is contained, never cropped. */
+function Phone({
+  img,
+  priority,
+  sizes,
+  className = "",
+  style,
+  reveal,
+}: {
+  img: Shot;
+  priority?: boolean;
+  sizes: string;
+  className?: string;
+  style?: CSSProperties;
+  reveal?: boolean;
+}) {
+  return (
+    <div
+      className={`relative aspect-[23/50] overflow-hidden border border-line bg-bg ${className}`}
+      style={style}
+      {...(reveal ? { "data-a": "clip" } : {})}
+    >
+      <Image src={img.src} alt={img.alt} fill priority={priority} sizes={sizes} className="object-contain" />
+    </div>
+  );
+}
+
+function Gallery({ project, images }: { project: Project; images: Project["images"] & {} }) {
+  if (project.plate?.shape === "tall") {
+    return (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-6">
+        {images.map((img) => (
+          <Phone key={img.src} img={img} reveal sizes="(min-width: 640px) 30vw, 50vw" />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 sm:gap-6">
+      {images.map((img, n) => {
+        const wide = images.length % 2 === 1 && n === 0;
+        return (
+          <div
+            key={img.src}
+            className={`relative overflow-hidden border border-line bg-surface ${wide ? "sm:col-span-2" : ""}`}
+            style={{ aspectRatio: `${img.w} / ${img.h}` }}
+            data-a="clip"
+          >
+            <Image
+              src={img.src}
+              alt={img.alt}
+              fill
+              sizes={wide ? "(min-width: 1216px) 70rem, 100vw" : "(min-width: 640px) 50vw, 100vw"}
+              className="object-cover"
+            />
+          </div>
+        );
+      })}
+    </div>
   );
 }

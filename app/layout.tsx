@@ -2,12 +2,16 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import { profile } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
-import { RevealObserver } from "@/components/RevealObserver";
+import { MotionProvider } from "@/components/motion/MotionProvider";
+import { PageTransition } from "@/components/motion/PageTransition";
+import { Nav } from "@/components/Nav";
+import "lenis/dist/lenis.css";
 import "./globals.css";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
-  axes: ["WONK", "opsz"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
   variable: "--font-fraunces",
   display: "swap",
 });
@@ -24,19 +28,26 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
+const description =
+  "Software engineer in Lahore, Pakistan. Backend services, web interfaces and mobile apps.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${profile.name} — ${profile.role}`,
-    template: `%s — ${profile.name}`,
+    default: `${profile.name} · ${profile.role}`,
+    template: `%s · ${profile.name}`,
   },
-  description:
-    "Software engineer. Production platforms where the details are load-bearing, and game engines where they are the whole point. Lahore, Pakistan.",
+  description,
   openGraph: {
-    title: `${profile.name} — ${profile.role}`,
-    description:
-      "Production platforms where the details are load-bearing, and game engines where they are the whole point.",
+    title: `${profile.name} · ${profile.role}`,
+    description,
     type: "profile",
+    siteName: profile.name,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${profile.name} · ${profile.role}`,
+    description,
   },
   robots: { index: true, follow: true },
 };
@@ -48,11 +59,11 @@ export const viewport: Viewport = {
   ],
 };
 
-/* Set the theme before first paint so a light-mode visitor never sees a
-   black flash, and vice versa. */
-const themeScript = `(function(){var d=document.documentElement;try{var s=localStorage.getItem("theme");var m=window.matchMedia("(prefers-color-scheme: light)").matches;d.dataset.theme=s||(m?"light":"dark");}catch(e){d.dataset.theme="dark";}
-/* Reveals only hide themselves once we know JS is running to un-hide them. */
-try{if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches)d.classList.add("reveal-ready");}catch(e){}})();`;
+/* Before first paint: set the theme so neither flashes, and opt in to scroll
+   animations unless the visitor prefers reduced motion. If the animation code
+   has not started within four seconds, drop the opt-in so nothing stays
+   hidden waiting for it. */
+const headScript = `(function(){var d=document.documentElement;d.classList.add("js");try{var s=localStorage.getItem("theme");var m=window.matchMedia("(prefers-color-scheme: light)").matches;d.dataset.theme=s||(m?"light":"dark");}catch(e){d.dataset.theme="dark";}try{if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){d.classList.add("motion");setTimeout(function(){if(!d.classList.contains("motion-ready"))d.classList.remove("motion");},4000);}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -65,16 +76,22 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: headScript }} />
       </head>
+      {/* suppressHydrationWarning: browser extensions stamp attributes onto
+          body before React loads. */}
       <body suppressHydrationWarning>
-        <RevealObserver />
         <a
           href="#main"
-          className="skip-link rounded-full border border-brass bg-bg px-5 py-2.5 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink"
+          className="skip-link border border-brass bg-bg px-4 py-2 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink"
         >
           Skip to content
         </a>
+        <MotionProvider />
+        <PageTransition />
+        {/* The header lives here, not in each page: it persists across routes,
+            and Next can scroll a new page to its first real element. */}
+        <Nav />
         {children}
       </body>
     </html>

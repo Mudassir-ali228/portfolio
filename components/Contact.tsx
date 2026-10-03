@@ -1,84 +1,64 @@
-"use client";
+import { profile } from "@/lib/content";
+import { Split } from "./motion/Split";
+import { Figure } from "./art/Figure";
 
-import { useState } from "react";
-import { contactGroups, profile } from "@/lib/content";
-import { MaskLines, Reveal, Stagger, StaggerItem } from "./Reveal";
+const elsewhere = [
+  { k: "Phone", v: profile.phone, href: profile.phoneHref },
+  { k: "GitHub", v: "Mudassir-ali228", href: profile.github, external: true },
+  { k: "LinkedIn", v: "mudassir-ali228", href: profile.linkedin, external: true },
+  { k: "CV", v: "PDF, one page", href: profile.cv, external: true },
+];
 
 export function Contact() {
-  const [copied, setCopied] = useState(false);
-
-  async function copyEmail() {
-    try {
-      await navigator.clipboard.writeText(profile.email);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      /* clipboard blocked — the mailto link still works */
-    }
-  }
-
   return (
-    <section id="contact" className="shell scroll-mt-20 py-16 sm:py-20 lg:py-28">
-      <Reveal>
-        <span className="label">05 — Contact</span>
-      </Reveal>
+    <section id="contact" className="shell scroll-mt-16 pb-20 md:pb-28">
+      <div className="relative pt-10 md:pt-14">
+        <span data-a="rule" className="absolute inset-x-0 top-0 h-px bg-line" />
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-12 lg:gap-12">
-        <div className="lg:col-span-6">
-          <h2 className="display text-[clamp(2.2rem,6.5vw,4.5rem)]">
-            <MaskLines
-              lines={[
-                <span key="1">Come say hi<span className="text-brass">.</span></span>,
-              ]}
-            />
+        <div className="grid gap-8 lg:grid-cols-12 lg:gap-12">
+          <h2 className="label lg:col-span-3 lg:pt-4" data-a="fade">
+            Contact
           </h2>
-          <Reveal delay={0.12}>
-            <p className="prose-lede mt-5 max-w-lg">
-              I graduated in June 2026 and I am looking for a team working on
-              something with real constraints. Email is fastest — I answer quicker
-              than the invoices do.
-            </p>
-          </Reveal>
-          <Reveal delay={0.2}>
-            <div className="mt-7 flex flex-wrap items-center gap-2.5">
-              <a href={`mailto:${profile.email}`} className="btn-brass">
-                Write to me
-                <span className="btn-arrow">→</span>
-              </a>
-              <button type="button" onClick={copyEmail} className="btn-ghost">
-                {copied ? "Copied ✓" : "Copy address"}
-              </button>
-            </div>
-          </Reveal>
+          <div className="lg:col-span-9">
+            <a
+              href={`mailto:${profile.email}`}
+              aria-label={`Email ${profile.email}`}
+              className="display block w-fit max-w-full whitespace-nowrap text-[clamp(1.5rem,5.4vw,4.5rem)] leading-[1] transition-colors duration-300 hover:text-brass"
+              data-a="chars"
+            >
+              <Split text={profile.email} />
+            </a>
+            <span data-a="rule" data-d="0.3" className="mt-4 block h-px bg-line md:mt-6" />
+          </div>
         </div>
 
-        <Stagger className="grid gap-x-8 gap-y-0 sm:grid-cols-2 lg:col-span-5 lg:col-start-8 lg:grid-cols-1">
-          {contactGroups.map((group) => (
-            <StaggerItem
-              key={group.label}
-              className="border-b border-line py-3.5 first:border-t sm:first:border-t-0 lg:first:border-t"
-            >
-              <p className="label">{group.label}</p>
-              {group.links.map((l) => {
-                const isExternal = l.href.startsWith("http");
-                return (
-                  <a
-                    key={l.href}
-                    href={l.href}
-                    target={isExternal || l.href.endsWith(".pdf") ? "_blank" : undefined}
-                    rel={isExternal || l.href.endsWith(".pdf") ? "noreferrer noopener" : undefined}
-                    className="group mt-1 flex items-baseline gap-2 text-[0.9375rem] text-ink"
-                  >
-                    <span className="brass-underline">{l.text}</span>
-                    <span className="font-mono text-[0.625rem] text-faint opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                      {isExternal ? "↗" : "→"}
-                    </span>
-                  </a>
-                );
-              })}
-            </StaggerItem>
-          ))}
-        </Stagger>
+        <div className="mt-12 grid gap-12 md:mt-16 lg:grid-cols-12 lg:gap-12">
+          <div className="lg:col-span-5 lg:col-start-4">
+            <p className="lede" data-a="lines">
+              {profile.status}. Email is the quickest way to reach me.
+            </p>
+            <dl className="mt-10 grid grid-cols-2 gap-x-8 gap-y-7" data-a="stagger">
+              {elsewhere.map((e) => (
+                <div key={e.k}>
+                  <dt className="label">{e.k}</dt>
+                  <dd className="mt-2">
+                    <a
+                      href={e.href}
+                      className="text-link text-[0.9375rem]"
+                      {...(e.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    >
+                      {e.v}
+                    </a>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div className="hidden lg:col-span-3 lg:col-start-10 lg:block">
+            <Figure kind="tree" label="Fig. 7" when="view" />
+          </div>
+        </div>
       </div>
     </section>
   );
