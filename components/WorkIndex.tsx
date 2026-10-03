@@ -62,8 +62,16 @@ export function WorkIndex() {
               data-a="clip"
               data-noscale=""
             >
-              {under && <Layer key={`u-${under}`} project={bySlug(under)} />}
-              <Layer key={active} project={project} enter={under !== null} />
+              {/* Every plate stays mounted, stacked under the current one, so
+                  its images are fetched and decoded before the first hover. */}
+              {projects.map((p) => (
+                <Layer
+                  key={p.slug}
+                  project={p}
+                  depth={p.slug === active ? 2 : p.slug === under ? 1 : 0}
+                  wipe={under !== null}
+                />
+              ))}
             </div>
             <div key={project.slug} className="fade-swap">
               <p className="body-copy mt-6 max-w-lg text-[0.9375rem]">{project.blurb}</p>
@@ -138,14 +146,23 @@ function Row({ k, v }: { k: string; v: string }) {
   );
 }
 
-/** One project's plate. `enter` wipes it up over whatever is beneath. */
-function Layer({ project, enter = false }: { project: Project; enter?: boolean }) {
+/** Decode as soon as it arrives, so the first wipe never shows a blank frame. */
+const decode = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  e.currentTarget.decode?.().catch(() => {});
+};
+
+/**
+ * One project's plate. At depth 2 it is on top, and once the visitor has
+ * hovered a row (`wipe`) it arrives by wiping up over the plate at depth 1.
+ */
+function Layer({ project, depth, wipe }: { project: Project; depth: 0 | 1 | 2; wipe: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  const top = depth === 2;
 
   useEffect(() => {
     const el = ref.current;
-    if (!enter || !el || !document.documentElement.classList.contains("motion")) return;
-    const img = el.querySelectorAll("img");
+    if (!top || !wipe || !el || !document.documentElement.classList.contains("motion")) return;
+    const img = [...el.querySelectorAll("img")];
     const tl = gsap.timeline();
     tl.fromTo(
       el,
@@ -154,14 +171,17 @@ function Layer({ project, enter = false }: { project: Project; enter?: boolean }
     );
     if (img.length) tl.fromTo(img, { scale: 1.12 }, { scale: 1, duration: 1.3, ease: "expo.out" }, 0);
     return () => {
+      // Cut short or done, a plate that leaves the top is whole again.
       tl.kill();
+      gsap.set(el, { clearProps: "clipPath" });
+      if (img.length) gsap.set(img, { clearProps: "transform" });
     };
-  }, [enter]);
+  }, [top, wipe]);
 
   const plate = project.plate;
 
   return (
-    <div ref={ref} className="absolute inset-0 bg-surface">
+    <div ref={ref} className="absolute inset-0 bg-surface" style={{ zIndex: depth }} aria-hidden={!top}>
       {plate?.shape === "wide" ? (
         <Image
           src={plate.images[0].src}
@@ -169,6 +189,7 @@ function Layer({ project, enter = false }: { project: Project; enter?: boolean }
           fill
           sizes="(min-width: 1024px) 36rem, 100vw"
           className="object-cover object-top"
+          onLoad={decode}
         />
       ) : plate?.shape === "tall" ? (
         <div className="flex h-full items-center justify-center gap-3 px-6 py-5">
@@ -181,6 +202,7 @@ function Layer({ project, enter = false }: { project: Project; enter?: boolean }
               height={img.h}
               sizes="10rem"
               className="h-full w-auto border border-line object-contain"
+              onLoad={decode}
             />
           ))}
         </div>

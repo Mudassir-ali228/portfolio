@@ -57,13 +57,13 @@ starting state.
 Every drawing on the site is computed by the algorithm it shows. Geometry lives
 in `lib/art.ts` (recursive tree, Fibonacci tiling, the call tree of `fib(6)`,
 breadth-first and depth-first search, a street graph with Dijkstra) and
-`lib/harmonograph.ts` (pendulums). `lib/painters.ts` draws any of them at any
+`lib/harmonograph.ts` (pendulums, used on two project pages). `lib/painters.ts` draws any of them at any
 point in its own time, forwards or backwards, which is what lets scrolling run
 a figure and scrolling back unrun it.
 
 - `components/art/Figure.tsx` is a single figure with a caption. Trees and
   pendulum drawings without a fixed seed pick a new curated one on each visit.
-- `components/art/Figures.tsx` is the pinned section of five plates, each
+- `components/art/Figures.tsx` is the pinned section of four plates, each
   beside the code that draws it and its time and space complexity. The counts
   are what the listed code really does: 25 calls naive and 11 memoised for
   `fib(6)`, the queue and stack after each visit, the heap after each settle.

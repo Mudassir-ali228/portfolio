@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { pendulums, type Pendulums } from "@/lib/harmonograph";
 import { DijkstraPainter, makePainter, type FigureSpec, type Painter } from "@/lib/painters";
-import { claimSeed, freshSeed } from "./Figure";
 import { Split } from "../motion/Split";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -112,20 +110,9 @@ const PLATES: Plate[] = [
     spec: { kind: "dijkstra", seed: 5 },
     readouts: [["Settled", "0 / 30"], ["Queue", "1"], ["To T", "\u221e"]],
   },
-  {
-    id: "simulation",
-    fig: "Fig. 6",
-    kicker: "Simulation",
-    title: ["Pendulums,", "simulated"],
-    cost: "O(1) per point, closed form",
-    note: "Two pendulums swing on each axis while friction slowly stops them, and a pen follows the sum.",
-    spec: { kind: "harmonograph" },
-    readouts: [["Time", "000.0"], ["Amplitude", "1.000"], ["Pen x", "+0.000"], ["Pen y", "+0.000"]],
-  },
 ];
 const RECURSION = 1;
 const ROUTES = 3;
-const SIM = 4;
 const N = PLATES.length;
 
 const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -133,25 +120,6 @@ const smooth = (t: number) => {
   t = clamp(t);
   return t * t * (3 - 2 * t);
 };
-
-/** One axis of the pendulum equation, typeset with this drawing's numbers. */
-function Axis({ name, pd, i }: { name: string; pd: Pendulums; i: 0 | 2 }) {
-  const term = (k: number) => (
-    <>
-      sin({pd.f[k].toFixed(3)}t + {pd.p[k].toFixed(2)}) e
-      <sup className="text-[0.72em]">{"−"}{pd.d[k].toFixed(4)}t</sup>
-    </>
-  );
-  return (
-    <p className="grid grid-cols-[2.4rem_1fr] gap-x-2">
-      <span>{name}(t) =</span>
-      <span>
-        {term(i)}
-        <br />+ {term(i + 1)}
-      </span>
-    </p>
-  );
-}
 
 /**
  * Four figures, each drawn by the code beside it. The section pins and its
@@ -164,32 +132,23 @@ export function Figures() {
   const beds = useRef<(HTMLDivElement | null)[]>([]);
   const bases = useRef<(HTMLCanvasElement | null)[]>([]);
   const lives = useRef<(HTMLCanvasElement | null)[]>([]);
-  const tip = useRef<HTMLSpanElement>(null);
   const counter = useRef<HTMLSpanElement>(null);
   const fills = useRef<(HTMLSpanElement | null)[]>([]);
   const painters = useRef<(Painter | null)[]>(Array(N).fill(null));
   const clock = useRef({ P: 0, entry: 0 });
   /** The progress each plate was last drawn at; -1 forces a repaint. */
   const drawn = useRef<number[]>(Array(N).fill(-1));
-  const replay = useRef(1);
   const update = useRef<() => void>(() => {});
-  const [seed, setSeed] = useState<number | null>(null);
-
-  useEffect(() => setSeed(freshSeed("harmonograph")), []);
-  useEffect(() => (seed === null ? undefined : claimSeed("harmonograph", seed)), [seed]);
-
-  // Painters: the first three once, the pendulums whenever the seed changes.
+  // Painters, made once the canvases exist.
   useEffect(() => {
     PLATES.forEach((plate, i) => {
-      if (i === SIM && seed === null) return;
-      if (i !== SIM && painters.current[i]) return;
       const b = bases.current[i], l = lives.current[i], bed = beds.current[i];
       if (!b || !l || !bed) return;
-      painters.current[i] = makePainter(i === SIM ? { kind: "harmonograph", seed: seed! } : plate.spec, b, l);
+      painters.current[i] = makePainter(plate.spec, b, l);
       painters.current[i]!.fit(bed.clientWidth);
     });
     update.current();
-  }, [seed]);
+  }, []);
 
   // Everything that moves, computed from the scroll position.
   useEffect(() => {
@@ -213,11 +172,6 @@ export function Figures() {
         painter.draw(p);
         drawn.current[i] = p;
         readouts(i);
-      }
-      if (i === SIM && tip.current) {
-        const pen = painter.pen?.();
-        if (pen) tip.current.style.transform = `translate(${pen.x}px, ${pen.y}px)`;
-        tip.current.style.opacity = p > 0 ? "1" : "0";
       }
       if (i === RECURSION) {
         const phase = painter.phase?.() ?? 0;
@@ -258,7 +212,7 @@ export function Figures() {
         }
         const plate = plates.current[i];
         if (!plate) continue;
-        const local = clamp((seg - i - 0.08) / 0.8) * (i === SIM ? replay.current : 1);
+        const local = clamp((seg - i - 0.08) / 0.8);
         if (w > 0) paint(i, local);
         const f = fills.current[i];
         if (f) f.style.transform = `scaleX(${clamp(seg - i)})`;
@@ -381,24 +335,6 @@ export function Figures() {
     pick(painter.nodeAt(e.clientX - box.left, e.clientY - box.top));
   };
 
-  const another = () => {
-    setSeed((cur) => freshSeed("harmonograph", cur ?? undefined));
-    if (!document.documentElement.classList.contains("motion")) return;
-    const r = { v: 0 };
-    replay.current = 0;
-    gsap.to(r, {
-      v: 1,
-      duration: 1.6,
-      ease: "power2.inOut",
-      onUpdate: () => {
-        replay.current = r.v;
-        update.current();
-      },
-    });
-  };
-
-  const pd = seed === null ? null : pendulums(seed);
-
   return (
     <section ref={section} id="figures" className="harmonograph relative" aria-label="Figures">
       <div className="shell flex min-h-[100svh] flex-col justify-center py-6 md:py-10">
@@ -409,7 +345,7 @@ export function Figures() {
               Figures
               <span className="hidden sm:inline">
                 <span className="mx-2 text-line">·</span>
-                <span className="normal-case tracking-normal">five ideas, each drawn by the code beside it</span>
+                <span className="normal-case tracking-normal">four ideas, each drawn by the code beside it</span>
               </span>
             </p>
             <span ref={counter} className="plate-counter label shrink-0 whitespace-nowrap tabular-nums" data-a="fade">
@@ -472,7 +408,6 @@ export function Figures() {
                         }}
                         className="absolute inset-0 h-full w-full"
                       />
-                      {i === SIM && <span ref={tip} className="pen-tip" />}
                     </div>
                   </div>
                 </div>
@@ -495,20 +430,8 @@ export function Figures() {
                       ))}
                     </div>
                   )}
-                  {/* Always rendered, so the animation finds it on its first
-                      pass; only the numbers wait for the drawing to be chosen. */}
-                  {i === SIM && (
-                    <div className="plate-code mb-6 hidden min-h-[7.5rem] flex-col gap-3 font-display text-[0.9375rem] italic leading-relaxed text-muted lg:flex" data-part>
-                      {pd && (
-                        <>
-                          <Axis name="x" pd={pd} i={0} />
-                          <Axis name="y" pd={pd} i={2} />
-                        </>
-                      )}
-                    </div>
-                  )}
                   <dl
-                    className={`grid gap-x-3 gap-y-3 border-t border-line pt-4 ${plate.readouts.length === 4 ? "grid-cols-4 lg:grid-cols-2" : "grid-cols-3"}`}
+                    className="grid grid-cols-3 gap-x-3 gap-y-3 border-t border-line pt-4"
                     data-part
                   >
                     {plate.readouts.map(([k, v]) => (
@@ -531,13 +454,6 @@ export function Figures() {
                         className="text-link text-[0.9375rem]"
                       >
                         Pick another destination
-                      </button>
-                    </p>
-                  )}
-                  {i === SIM && (
-                    <p className="mt-4 md:mt-6" data-part>
-                      <button type="button" onClick={another} className="text-link text-[0.9375rem]">
-                        Draw another
                       </button>
                     </p>
                   )}

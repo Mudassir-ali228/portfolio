@@ -56,7 +56,7 @@ export function Contact() {
           </div>
 
           <div className="hidden lg:col-span-3 lg:col-start-10 lg:block">
-            <Figure kind="tree" label="Fig. 7" when="view" />
+            <Figure kind="tree" label="Fig. 6" when="view" />
           </div>
         </div>
       </div>
