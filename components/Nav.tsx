@@ -3,8 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { profile } from "@/lib/content";
 import { scrollToTarget } from "./motion/MotionProvider";
+import { Split } from "./motion/Split";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const links = [
   { href: "/#work", label: "Work" },
@@ -43,10 +48,14 @@ function ThemeButton({ className = "", tabIndex }: { className?: string; tabInde
 export function Nav() {
   const [open, setOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
+  const brandRef = useRef<HTMLAnchorElement>(null);
+  const heroRef = useRef<HTMLElement | null>(null);
   const pathname = usePathname();
+  const home = pathname === "/";
 
   // Lifts onto a ground once the page moves; hides while reading down and
-  // comes back as soon as the reader scrolls up.
+  // comes back as soon as the reader scrolls up. On the home page it stays
+  // through the hero, so the name can be seen arriving in it.
   useEffect(() => {
     let raf = 0;
     let last = window.scrollY;
@@ -55,9 +64,11 @@ export function Nav() {
       const y = window.scrollY;
       const h = headerRef.current;
       if (!h) return;
+      const hero = heroRef.current;
+      const hold = hero?.isConnected ? Math.max(240, hero.offsetTop + hero.offsetHeight - h.offsetHeight) : 240;
       h.classList.toggle("is-lifted", y > 16);
-      if (y > 240 && y > last + 4) h.classList.add("is-hidden");
-      else if (y < last - 4 || y <= 240) h.classList.remove("is-hidden");
+      if (y > hold && y > last + 4) h.classList.add("is-hidden");
+      else if (y < last - 4 || y <= hold) h.classList.remove("is-hidden");
       last = y;
     };
     const onScroll = () => {
@@ -70,6 +81,49 @@ export function Nav() {
       window.removeEventListener("scroll", onScroll);
     };
   }, []);
+
+  // While the big name is on screen the header leaves its own out. It rises
+  // into place as the big one passes up behind the header, and sinks again
+  // when the big one comes back down.
+  useEffect(() => {
+    const link = brandRef.current;
+    const header = headerRef.current;
+    const big = document.querySelector<HTMLElement>("[data-handoff]");
+    heroRef.current = big?.closest("section") ?? null;
+    if (!link || !header) return;
+    if (!big) {
+      link.removeAttribute("data-tucked");
+      return;
+    }
+
+    const chars = link.querySelectorAll(".split-c");
+    const motion = document.documentElement.classList.contains("motion");
+    const tl = motion
+      ? gsap
+          .timeline({ paused: true, onReverseComplete: () => link.setAttribute("data-tucked", "") })
+          // y: 0 so the CSS starting offset is not stacked on top.
+          .fromTo(chars, { yPercent: 118, y: 0 }, { yPercent: 0, duration: 0.9, ease: "expo.out", stagger: 0.025 })
+      : null;
+
+    const st = ScrollTrigger.create({
+      trigger: big,
+      start: () => `bottom ${header.offsetHeight}px`,
+      onEnter: () => {
+        link.removeAttribute("data-tucked");
+        tl?.timeScale(1).play();
+      },
+      onLeaveBack: () => {
+        if (tl) tl.timeScale(1.6).reverse();
+        else link.setAttribute("data-tucked", "");
+      },
+    });
+
+    return () => {
+      st.kill();
+      tl?.kill();
+      gsap.set(chars, { clearProps: "transform" });
+    };
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -87,7 +141,7 @@ export function Nav() {
   /* On the home page, glide to the section instead of jumping. */
   const go = (href: string) => (e: MouseEvent) => {
     setOpen(false);
-    if (pathname !== "/") return;
+    if (!home) return;
     e.preventDefault();
     const hash = href.slice(1);
     history.replaceState(null, "", hash);
@@ -99,13 +153,16 @@ export function Nav() {
   return (
     <>
       <header ref={headerRef} className="site-nav fixed inset-x-0 top-0 z-50">
-        <nav className="shell flex h-16 items-center justify-between" aria-label="Main">
+        <nav className="load-drop shell flex h-16 items-center justify-between" style={{ "--d": "1.2s" } as CSSProperties} aria-label="Main">
           <Link
+            ref={brandRef}
             href="/"
-            onClick={pathname === "/" ? (e) => (e.preventDefault(), scrollToTarget(0)) : undefined}
-            className="display text-[1.25rem] leading-none tracking-[-0.01em]"
+            onClick={home ? (e) => (e.preventDefault(), scrollToTarget(0)) : undefined}
+            aria-label={profile.name}
+            data-tucked={home ? "" : undefined}
+            className="nav-name display text-[1.25rem] leading-none tracking-[-0.01em]"
           >
-            {profile.name}
+            <Split text={profile.name} />
           </Link>
 
           <div className="hidden items-center gap-8 md:flex">

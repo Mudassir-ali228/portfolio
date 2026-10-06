@@ -62,8 +62,9 @@ export const viewport: Viewport = {
 /* Before first paint: set the theme so neither flashes, and opt in to scroll
    animations unless the visitor prefers reduced motion. If the animation code
    has not started within four seconds, drop the opt-in so nothing stays
-   hidden waiting for it. */
-const headScript = `(function(){var d=document.documentElement;d.classList.add("js");try{var s=localStorage.getItem("theme");var m=window.matchMedia("(prefers-color-scheme: light)").matches;d.dataset.theme=s||(m?"light":"dark");}catch(e){d.dataset.theme="dark";}try{if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){d.classList.add("motion");setTimeout(function(){if(!d.classList.contains("motion-ready"))d.classList.remove("motion");},4000);}}catch(e){}})();`;
+   hidden waiting for it. Scroll restoration starts off so a reload opens at
+   the top (MotionProvider hands it back once the page has loaded). */
+const headScript = `(function(){var d=document.documentElement;d.classList.add("js");try{history.scrollRestoration="manual";}catch(e){}try{var s=localStorage.getItem("theme");var m=window.matchMedia("(prefers-color-scheme: light)").matches;d.dataset.theme=s||(m?"light":"dark");}catch(e){d.dataset.theme="dark";}try{if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){d.classList.add("motion");setTimeout(function(){if(!d.classList.contains("motion-ready"))d.classList.remove("motion");},4000);}}catch(e){}})();`;
 
 export default function RootLayout({
   children,

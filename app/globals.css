@@ -238,6 +238,15 @@ body {
   transition-delay: calc(0.08s + var(--i, 0) * 0.06s);
 }
 
+/* On the home page the header's name waits under its masks while the big
+   one is on screen; Nav raises it as the big one passes behind the header. */
+.js .nav-name[data-tucked] {
+  visibility: hidden;
+}
+.js .nav-name[data-tucked] .split-c {
+  transform: translateY(118%);
+}
+
 /* The theme button names the theme it switches to. Both labels are in the
    markup and CSS picks one, so there is no flash while React starts. */
 :root[data-theme="light"] .when-dark,
@@ -308,12 +317,47 @@ body {
   animation-delay: calc(var(--d, 0s) + 0.1s);
 }
 
+/* The home page's name: each letter carries its own start time, set from
+   the tree's growth (lib/intro.ts), so letters arrive in the order the tree
+   branches rather than left to right. */
+.load-grow .split-c {
+  animation: rise 1.3s var(--ease-expo) both;
+  animation-delay: var(--t, 0s);
+}
+
+/* The nav settles in from above once the page has arrived. */
+@keyframes drop {
+  from { opacity: 0; transform: translateY(-60%); }
+  to { opacity: 1; transform: none; }
+}
+.load-drop {
+  animation: drop 1.1s var(--ease-expo) both;
+  animation-delay: var(--d, 0s);
+}
+
+/* A clock that does nothing visible. The hero tree reads how far it has run
+   so its drawing keeps time with the CSS entrances, however late the script
+   arrives. */
+@keyframes hero-clock {
+  from { --hero-clock: 0; }
+  to { --hero-clock: 1; }
+}
+.hero-clock {
+  animation: hero-clock 12s linear both;
+}
+
 /* Arriving through the page curtain: hold every entrance until it lifts. */
 .arriving .load-chars .split-c {
   animation-delay: calc(var(--d, 0s) + var(--i, 0) * 32ms + 0.75s);
 }
 .arriving .load-words .split-c {
   animation-delay: calc(var(--d, 0s) + var(--i, 0) * 18ms + 0.75s);
+}
+.arriving .load-grow .split-c {
+  animation-delay: calc(var(--t, 0s) + 0.75s);
+}
+.arriving .hero-clock {
+  animation-delay: 0.75s;
 }
 .arriving .load-fade,
 .arriving .load-rule,
@@ -345,6 +389,34 @@ body {
 }
 .motion [data-a="scrub"] .scrub-w {
   opacity: 0.16;
+}
+
+/* The hero's ground and the seed the tree grows from. The ground is drawn
+   in brass and dries to a hairline; without motion it is simply there. */
+.hero-wet {
+  opacity: 0;
+}
+.motion .hero-ground,
+.motion .hero-wet {
+  transform: scaleX(0);
+}
+.motion .hero-wet {
+  opacity: 1;
+}
+.hero-seed {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--brass);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brass) 20%, transparent);
+  transform: scale(0.55);
+  pointer-events: none;
+}
+.motion .hero-seed {
+  visibility: hidden;
+  opacity: 0;
 }
 
 /* The pen's tip, riding the end of the ink while a figure is drawn. */

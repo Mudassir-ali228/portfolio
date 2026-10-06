@@ -175,6 +175,26 @@ function build(scope: HTMLElement) {
 export function MotionProvider() {
   const pathname = usePathname();
 
+  // A reload opens at the top. Chrome decides whether to restore the old
+  // scroll position by the setting at the moment the page is left, Safari by
+  // the one on the new page (set by the head script), so it is off at both
+  // ends. In between it is handed back, through ScrollTrigger because it
+  // re-applies its own copy on every refresh, so back and forward between
+  // pages still land where the reader left off.
+  useEffect(() => {
+    const handBack = () => ScrollTrigger.clearScrollMemory("auto");
+    const leave = () => {
+      history.scrollRestoration = "manual";
+    };
+    if (document.readyState === "complete") handBack();
+    window.addEventListener("pageshow", handBack);
+    window.addEventListener("pagehide", leave);
+    return () => {
+      window.removeEventListener("pageshow", handBack);
+      window.removeEventListener("pagehide", leave);
+    };
+  }, []);
+
   // One Lenis instance for the life of the tab, driven by GSAP's clock so
   // ScrollTrigger and the smooth scroll never disagree about a frame.
   useEffect(() => {

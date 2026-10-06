@@ -30,7 +30,16 @@ a plain-text `diagram` instead.
 ## Motion
 
 Entrances on page load are CSS keyframes (`.load-*` in `app/globals.css`), so
-they start on the first frame. Everything driven by scroll is declared in markup
+they start on the first frame.
+
+The home page opens with the hero tree (`components/art/HeroTree.tsx`): a seed
+lands on the ground line, the line draws out from it in brass and dries to a
+hairline, and the tree grows one level at a time. The name's letters arrive in
+the same recursive order, the middle letter with the trunk and the middles of
+each half with each fork (`lib/intro.ts` holds the shared timing). The type is
+CSS, so it never waits for JavaScript; the tree reads how far a do-nothing
+`hero-clock` animation has run and joins at that point, so the two stay in step
+however late the script loads, including behind the page curtain. Everything driven by scroll is declared in markup
 with a `data-a` attribute and built by `components/motion/MotionProvider.tsx`:
 
 | `data-a` | Effect |

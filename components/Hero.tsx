@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 import { profile } from "@/lib/content";
+import { LEVEL, TRUNK, splitDepths } from "@/lib/intro";
 import { Split } from "./motion/Split";
-import { Figure } from "./art/Figure";
+import { HeroTree } from "./art/HeroTree";
 
 const links = [
   { label: "Email", href: `mailto:${profile.email}` },
@@ -12,67 +13,85 @@ const links = [
 
 const d = (s: number) => ({ "--d": `${s}s` }) as CSSProperties;
 
-export function Hero() {
-  const [first, last] = profile.name.split(" ");
+/**
+ * The name, letter by letter, timed to the tree: each letter rises as the
+ * level of the tree at its own depth starts to grow (see lib/intro.ts).
+ */
+function Name({ words }: { words: string[] }) {
+  const letters = words.join("").length;
+  const depth = splitDepths(letters);
+  // Letters at the same depth arrive a beat apart, left to right.
+  const seen = new Map<number, number>();
+  let n = 0;
+  return words.map((word, w) => (
+    <span
+      key={word}
+      className={w === 0 ? "block" : "block pl-[0.62em] italic md:pl-[1.3em]"}
+      data-a="drift"
+      data-x={w === 0 ? "-5" : "7"}
+    >
+      <span className="load-grow block" aria-hidden="true">
+        {/* The italic leans past its own box; widen the mask so it is not cut. */}
+        <span className={w === 0 ? "split-w whitespace-nowrap" : "split-w whitespace-nowrap pr-[0.14em] mr-[-0.14em]"}>
+          {Array.from(word).map((ch, j) => {
+            const k = depth[n++];
+            const beat = seen.get(k) ?? 0;
+            seen.set(k, beat + 1);
+            const t = TRUNK + k * LEVEL + beat * 0.045;
+            return (
+              <span key={j} className="split-c" style={{ "--t": `${t.toFixed(3)}s` } as CSSProperties}>
+                {ch}
+              </span>
+            );
+          })}
+        </span>
+      </span>
+    </span>
+  ));
+}
 
+export function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="shell relative flex min-h-[100svh] flex-col justify-end pb-8 pt-28 md:pb-10">
+    <section className="hero-clock relative overflow-hidden">
+      {/* Phones and tablets: the name, the tree on its ground with the
+          caption under it, then the rest. Desktop: the tree stands on the
+          right with the name across its trunk, on the same ground as the
+          links. */}
+      <div className="shell grid min-h-[100svh] grid-cols-1 grid-rows-[auto_minmax(9rem,1fr)_auto_auto_auto_auto] pb-7 pt-[5.5rem] md:pt-24 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)_auto_auto_auto_auto] lg:gap-x-10 lg:pb-10 lg:pt-28">
+        <HeroTree />
+
         <h1
           aria-label={profile.name}
-          className="display relative z-10 text-[clamp(4rem,19.5vw,12.5rem)] leading-[0.84]"
+          data-handoff=""
+          className="display relative z-10 col-start-1 row-start-1 text-[clamp(3.6rem,22.5vw,12.5rem)] leading-[0.86] lg:col-end-13 lg:row-start-2"
         >
-          <span className="block" data-a="drift" data-x="-5">
-            <span className="load-chars block" style={d(0.1)}>
-              <Split text={first} />
-            </span>
-          </span>
-          <span className="block pl-[0.85em] md:pl-[1.5em]" data-a="drift" data-x="7">
-            <span className="load-chars block" style={d(0.28)}>
-              <Split text={last} />
-            </span>
-          </span>
+          <Name words={profile.name.split(" ")} />
         </h1>
 
-        <p className="lede load-words relative z-10 mt-9 max-w-[34rem] md:mt-12" style={d(0.7)}>
+        <p
+          className="lede load-words relative z-10 col-start-1 row-start-5 mt-6 max-w-[34rem] md:mt-8 lg:col-end-8 lg:row-start-3 lg:mt-12 lg:pb-16"
+          style={d(1.05)}
+        >
           <Split text={profile.headline} by="words" />
         </p>
 
-        <div className="relative mt-12 pt-6 md:mt-16">
-          {/* The tree grows from this rule, behind the name, and draws back
-              into its trunk as the page scrolls away. */}
-          <div className="pointer-events-none absolute bottom-full right-[-10vw] z-0 w-[min(84vw,50svh)] opacity-40 sm:right-0 sm:opacity-60 md:w-[min(46rem,54vw,76svh)] md:opacity-100">
-            <Figure
-              kind="tree"
-              label="Fig. 1"
-              note="Each branch splits in two until nine levels deep. A new tree on every visit."
-              when="load"
-              delay={0.45}
-              retract={0.18}
-              regrow="Grow another"
-              captionInside
-              captionClassName="hidden max-w-[17rem] pb-3 md:block load-fade"
-            />
-          </div>
-          <span className="load-rule absolute inset-x-0 top-0 h-px bg-line" style={d(0.85)} />
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-baseline sm:justify-between">
-            <p className="label load-fade" style={d(1.05)}>
-              {profile.status}
-            </p>
-            <ul className="flex flex-wrap gap-x-7 gap-y-2 text-[0.9375rem]">
-              {links.map((l, i) => (
-                <li key={l.label} className="load-fade" style={d(1.1 + i * 0.06)}>
-                  <a
-                    href={l.href}
-                    className="text-link"
-                    {...(l.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                  >
-                    {l.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="col-start-1 row-start-6 mt-10 flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between lg:col-end-13 lg:row-start-5 lg:mt-0 lg:pt-6">
+          <p className="label load-fade" style={d(1.35)}>
+            {profile.status}
+          </p>
+          <ul className="flex flex-wrap gap-x-7 gap-y-2 text-[0.9375rem]">
+            {links.map((l, i) => (
+              <li key={l.label} className="load-fade" style={d(1.4 + i * 0.06)}>
+                <a
+                  href={l.href}
+                  className="text-link"
+                  {...(l.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                >
+                  {l.label}
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

@@ -163,11 +163,17 @@ export class TreePainter extends Canvas implements Painter {
     }
     c.globalAlpha = 1;
   }
+  /** Counts the levels that have started growing, so nothing is counted
+   *  before it is on the canvas. */
   readout() {
-    const d = Math.min(this.t.depth, Math.floor(this.p * (this.t.depth + 1)));
+    const started = Math.min(this.t.depth + 1, Math.ceil(this.p * (this.t.depth + 1)));
     let n = 0;
-    for (let i = 4; i < this.t.segs.length; i += 5) if (this.t.segs[i] <= d) n++;
-    return { Depth: String(d), Branches: fmt(n) };
+    for (let i = 4; i < this.t.segs.length; i += 5) if (this.t.segs[i] < started) n++;
+    return { Depth: String(Math.max(0, started - 1)), Branches: fmt(n), n: String(n) };
+  }
+  /** Where the trunk meets the ground, in CSS pixels. */
+  root() {
+    return { x: this.px(this.t.segs[0]), y: this.px(this.t.segs[1]) };
   }
 }
 
